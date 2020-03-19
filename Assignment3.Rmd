@@ -110,13 +110,83 @@ plot(hypothesis(Altercentric_m2,
            "DiagnosisSchizophrenia > DiagnosisControl")
 )
 
+conditional_effects(Altercentric_m2)
+
+plot(conditional_effects(Altercentric_m2), points=T)
 
 ```
 
 
+The model indicates a credible difference in altercentric intrusion in the two groups supporting our hypothesis (b = 0.36, CIs = 0.17, 0.56, EviRatio = 1999)
+Controls showed on average an altercentric intrusion effect of 3.86 (CIs = 3.74, 3.99 ) and schizophrenia of 4.22 (CIs = 4.02, 4.43).
+[Add plot of the effects]
+- comment on plot: From this plot we see that one can't infer much from the level of Altercentric intrusion from the individual but on the population level there seems to be a difference in the level of the symptom for schizophrenics compared to controls.
 
 
 Q1.2) Is altercentric intrusion related to specific symptoms *in the patients*? Identify which of the symptoms could be relevant. Should you include more than one symptom? Build models, priors, predictive checks. Assess the evidence and report models and results, including plots. Discuss whether the results make sense.
+
+```{r}
+scz <- d %>% 
+  subset(Diagnosis == "Schizophrenia")
+
+#We have chosen to use the VoiceHearing as our predictor since this is a known sympotom of Schizophrenia
+
+VH <- bf(
+  AltercentricIntrusion ~ 1 + VoiceHearing
+)
+
+#Creating Priors 
+summary(scz)
+
+sd(scz$AltercentricIntrusion)
+
+priorVH <- c(
+  prior(normal(4, 1), class = b),  #4 is the mean, 1 is the SD (the value of AI goes up to 6 with a mean at 4)
+  prior(normal(1, 2), class = sigma)
+) 
+
+#Testing the prior
+VH_priorcheck <- brm(
+  formula = VH,
+  data = d,
+  family = gaussian,
+  prior = priorVH,
+  sample_prior = "only"  
+)
+ 
+pp_check(VH_priorcheck, nsamples = 100) 
+
+
+#testing the actual model
+VH_m <- brm(
+  formula = VH,
+  data = d,
+  family = gaussian,
+  prior = priorVH,
+  sample_prior = T  
+)
+
+# Posterior predictive check
+pp_check(VH_m, nsamples = 100)
+
+## Check the model for warnings
+VH_m
+
+# Hypothesis testing 
+hypothesis(VH_m,
+           "DiagnosisSchizophrenia > DiagnosisControl")
+
+plot(hypothesis(Altercentric_m2,
+           "DiagnosisSchizophrenia > DiagnosisControl")
+)
+
+conditional_effects(Altercentric_m2)
+
+plot(conditional_effects(Altercentric_m2), points=T)
+
+
+```
+
 
 ## Second part - min 9 in the intro video
 
