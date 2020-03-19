@@ -33,7 +33,7 @@ The research questions you have to answer are the following:
 
 Q1.1) Does schizophrenia involved altercentric intrusion? Define model and priors. Test the implications of your priors (prior predictive checks) and if needed adjust them. Run the model. Test the quality of the fitted model (posterior predictive checks). Assess the evidence in favor of an increased altercentric intrusion in schizophrenia. Report the model and the results, including plots.
 
-```{r}
+```{r Q1.1}
 library(pacman)
 p_load(tidyverse, brms)
 
@@ -125,7 +125,7 @@ Controls showed on average an altercentric intrusion effect of 3.86 (CIs = 3.74,
 
 Q1.2) Is altercentric intrusion related to specific symptoms *in the patients*? Identify which of the symptoms could be relevant. Should you include more than one symptom? Build models, priors, predictive checks. Assess the evidence and report models and results, including plots. Discuss whether the results make sense.
 
-```{r}
+```{r Clean data + Voice Hearing}
 scz <- d %>% 
   subset(Diagnosis == "Schizophrenia")
 
@@ -148,19 +148,19 @@ priorVH <- c(
 #Testing the prior
 VH_priorcheck <- brm(
   formula = VH,
-  data = d,
+  data = scz,
   family = gaussian,
   prior = priorVH,
   sample_prior = "only"  
 )
  
-pp_check(VH_priorcheck, nsamples = 100) 
+pp_check(VH_priorcheck, nsamples =100) 
 
 
 #testing the actual model
 VH_m <- brm(
   formula = VH,
-  data = d,
+  data = scz,
   family = gaussian,
   prior = priorVH,
   sample_prior = T  
@@ -172,20 +172,176 @@ pp_check(VH_m, nsamples = 100)
 ## Check the model for warnings
 VH_m
 
-# Hypothesis testing 
-hypothesis(VH_m,
-           "DiagnosisSchizophrenia > DiagnosisControl")
+conditional_effects(VH_m)
+plot(conditional_effects(VH_m), points=T)
 
-plot(hypothesis(Altercentric_m2,
-           "DiagnosisSchizophrenia > DiagnosisControl")
-)
-
-conditional_effects(Altercentric_m2)
-
-plot(conditional_effects(Altercentric_m2), points=T)
 
 
 ```
+
+```{r Apathy}
+Apathy <- bf(
+  AltercentricIntrusion ~ 1 + Apathy
+)
+
+#Creating Priors 
+
+prior <- c(
+  prior(normal(4, 1), class = b),  #4 is the mean, 1 is the SD (the value of AI goes up to 6 with a mean at 4)
+  prior(normal(1, 2), class = sigma)
+) 
+
+#Testing the prior
+Apathy_priorcheck <- brm(
+  formula = Apathy,
+  data = scz,
+  family = gaussian,
+  prior = prior,
+  sample_prior = "only"  
+)
+ 
+pp_check(Apathy_priorcheck, nsamples =100) 
+
+
+#testing the actual model
+Apathy_m <- brm(
+  formula = Apathy,
+  data = scz,
+  family = gaussian,
+  prior = prior,
+  sample_prior = T  
+)
+
+# Posterior predictive check
+pp_check(Apathy_m, nsamples = 100)
+
+## Check the model for warnings
+Apathy_m
+
+conditional_effects(Apathy_m)
+plot(conditional_effects(Apathy_m), points=T)
+
+```
+
+```{r MindReading}
+MR <- bf(
+  AltercentricIntrusion ~ 1 + MindReading
+)
+
+#Creating Priors 
+
+prior <- c(
+  prior(normal(4, 1), class = b),  #4 is the mean, 1 is the SD (the value of AI goes up to 6 with a mean at 4)
+  prior(normal(1, 2), class = sigma)
+) 
+
+#Testing the prior
+MR_priorcheck <- brm(
+  formula = MR,
+  data = scz,
+  family = gaussian,
+  prior = prior,
+  sample_prior = "only"  
+)
+ 
+pp_check(MR_priorcheck, nsamples =100) 
+
+
+#testing the actual model
+MR_m <- brm(
+  formula = MR,
+  data = scz,
+  family = gaussian,
+  prior = prior,
+  sample_prior = T  
+)
+
+# Posterior predictive check
+pp_check(MR_m, nsamples = 100)
+
+## Check the model for warnings
+MR_m
+
+conditional_effects(MR_m)
+plot(conditional_effects(MR_m), points=T)
+
+```
+
+
+```{r MindReading and VoiceHearing}
+
+MRaVH <- bf(
+  AltercentricIntrusion ~ 1 + VoiceHearing + MindReading
+)
+
+#Testing the prior
+VH_priorcheck <- brm(
+  formula = MRaVH,
+  data = scz,
+  family = gaussian,
+  prior = prior,
+  sample_prior = "only"  
+)
+ 
+pp_check(MRaVH_priorcheck, nsamples =100) 
+
+
+#testing the actual model
+MRaVH_m <- brm(
+  formula = MRaVH,
+  data = scz,
+  family = gaussian,
+  prior = prior,
+  sample_prior = T  
+)
+
+# Posterior predictive check
+pp_check(MRaVH_m, nsamples = 100)
+
+## Check the model for warnings
+MRaVH_m
+
+conditional_effects(MRaVH_m)
+plot(conditional_effects(MRaVH_m), points=T)
+
+```
+
+```{r all}
+All <- bf(
+  AltercentricIntrusion ~ 1 + VoiceHearing + MindReading + Apathy
+)
+
+#Testing the prior
+All_priorcheck <- brm(
+  formula = All,
+  data = scz,
+  family = gaussian,
+  prior = prior,
+  sample_prior = "only"  
+)
+ 
+pp_check(All_priorcheck, nsamples =100) 
+
+
+#testing the actual model
+All_m <- brm(
+  formula = All,
+  data = scz,
+  family = gaussian,
+  prior = prior,
+  sample_prior = T  
+)
+
+# Posterior predictive check
+pp_check(All_m, nsamples = 100)
+
+## Check the model for warnings
+All_m
+
+conditional_effects(All_m)
+plot(conditional_effects(All_m), points=T)
+```
+
 
 
 ## Second part - min 9 in the intro video
