@@ -42,16 +42,73 @@ d <- read.csv("Ass3.csv")
 summary(d)
 
 #changing the lable in diagnosis (0 is controls, 1 is patients)
-d$Diagnosis <- plyr::revalue(as.character(d$Diagnosis),
+d$Diagnosis = plyr::revalue(as.character(d$Diagnosis),
                              c("0" = "Control", "1" = "Schizophrenia"))
 
 # making ID and Diagnosis into factors
 d <- d %>%
   mutate(
-    ID <- as.factor(ID),
-    Diagnosis <- as.factor(Diagnosis)
+    ID = as.factor(ID),
+    Diagnosis = as.factor(Diagnosis)
   )
 
+#creating a model which gives us both the estimate for the controls and schizophrania
+
+Altercentric_f <- bf(
+  AltercentricIntrusion ~ 0 + Diagnosis
+)
+
+# traditional way (1+D
+
+# or 0 + d and it will give us the estimate for both controls and schiz)
+
+#Defining the priors
+get_prior(Altercentric_f, family = gaussian, d)
+
+#there is a weak defining prior (sigma)
+
+
+priorDiagnosis <- c(
+  prior(normal(4, 1), class = b),  #4 is the mean, 1 is the SD (the value of AI goes up to 6 with a mean at 4)
+  prior(normal(1, 2), class = sigma) # not adding this prior because it is already given by default
+) 
+
+
+#Testing the prior
+Altercentric_m1 <- brm(
+  formula = Altercentric_f,
+  data = d,
+  family = gaussian,
+  prior = priorDiagnosis,
+  sample_prior = "only"  # sampeling the prior because we want to test it
+)
+ 
+pp_check(Altercentric_m1, nsamples = 100) 
+
+
+
+#testing the actual model
+Altercentric_m2 <- brm(
+  formula = Altercentric_f,
+  data = d,
+  family = gaussian,
+  prior = priorDiagnosis,
+  sample_prior = T  
+)
+
+# Posterior predictive check
+pp_check(Altercentric_m2, nsamples = 100)
+
+## Check the model for warnings
+Altercentric_m2
+
+# Hypothesis testing 
+hypothesis(Altercentric_m2,
+           "DiagnosisSchizophrenia > DiagnosisControl")
+
+plot(hypothesis(Altercentric_m2,
+           "DiagnosisSchizophrenia > DiagnosisControl")
+)
 
 
 ```
