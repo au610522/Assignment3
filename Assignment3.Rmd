@@ -125,6 +125,8 @@ Controls showed on average an altercentric intrusion effect of 3.86 (CIs = 3.74,
 
 Q1.2) Is altercentric intrusion related to specific symptoms *in the patients*? Identify which of the symptoms could be relevant. Should you include more than one symptom? Build models, priors, predictive checks. Assess the evidence and report models and results, including plots. Discuss whether the results make sense.
 
+
+
 ```{r Clean data + Voice Hearing}
 d <- d %>%
   mutate(
@@ -196,8 +198,6 @@ plot(conditional_effects(VH_m), points=T)
 
 From this model, Voice hearing does seem to have a small possitive effect on altercentric intrusion, b = 0.06 (sd = 0.14), CI = -0.20, 0.32. This effect is however quite uncertain, which can be seen from the credibility interval containing zero. From the hypothesis testing we do see that there are more samples in favor of the hypothesis (the effect of voice hearing is bigger than zero). There are 2.1 times more samples that are compatible to our hypothesis compared to samples that are not. However, this result is unconvincing since the credibility interval contain zero.
 
-
-
 ```{r Apathy}
 Apathy <- bf(
   AltercentricIntrusion ~ 1 + Apathy
@@ -246,6 +246,7 @@ conditional_effects(Apathy_m)
 plot(conditional_effects(Apathy_m), points=T)
 
 ```
+
 From this model, apathy seema to have a negative effect on altercentric intrusion, b = -0.20 (sd = 0.13), CI = -0.44, 0.05. This effect is somewhat uncertain, since the credibility interval cross zero. From the hypothesis testing we do see that there are more samples in favor of the hypothesis that the effect of apathy is smaller than zero. By assessing the evidence ratio it is apparent that there are 14.38 times more samples compatible to our hypothesis compared to samples that are not. However, this result is uncertain since the credibility interval once again contain zero.
 
 ```{r MindReading}
@@ -408,6 +409,8 @@ plot(conditional_effects(All_m), points=T)
 ```
 The model controlling for all predictors show a decrease in estimated effects of each predictor. Voice hearing show a positive effect on altercentric intrusion of b = 0.06 (sd = 0.15) after controlling for both mind reading and apathy. Likewise, mind reading have a positive effect of b = 0.04 (sd = 0.13) and apathy have a negative effect of b = -0.17 (sd = 0.15). The evidence in support of each effect has also decreased, where the samples in support of the effect of voice hearing and mind reading being greater than one is only 1.92 and 1.7 (resp.) times bigger than the samples against. For Apathy, the evidence ratio has decreased to 6.87.
 
+To make a more intuitive assesment of which model is the best model we compare them.
+
 Comparing the models
 ```{r}
 VH_cri <- brms::add_criterion(VH_m, criterion = "loo")
@@ -431,15 +434,182 @@ brms::loo_model_weights(VH_cri,
                   All_cri)
 ```
 
+Here we find, when assuming one of our models is the true model, the model only predicting based on apathy is the best model. This contradicts with the results we expected based on the knowledge of MR and VH being typical symptoms of Schizophrania and that AI can be expected to be higher if you are diagnosed with Schizophrania.
 
-## Second part - min 9 in the intro video
+## Second part
 
 Q2.1) However, we know that the diagnosis is based on symptom assessment: if the overall sum of symptoms is severe enough, the participant gets a diagnosis. In other words, by selecting the patients, and including the symptoms in the model we might have inadvertently introduced an issue in our inference. Do try to draw a causal graph (Directed Acyclical Graph) of the variables and compare it with the types of causal graphs presented in the slides. Discuss which biases you might have introduced.
 
+[indsæt vores graph]
+
+As can be seen in the diagram above we included both VH and MR indirectly by only looking at participants with the diagnosis of schizophrania. This may mask some om the effect from VH and MR. 
+
+To remove this maskring effect we will create the same models but including controls as well as schizofrenia.
+
+
 Q2.2.) Redesign your analysis following the graph and report how the results change
 
+```{r}
 
-# causal graph - look at the biases in the graph
+##### VH 
+VH_m <- brm(
+  formula = VH,
+  data = d,
+  family = gaussian,
+  prior = priorVH,
+  sample_prior = T  
+)
+
+# Posterior predictive check
+pp_check(VH_m, nsamples = 100)
+
+## Check the model for warnings
+VH_m
+
+# Hypothesis testing that voice hearing has a positive effect of altercentric intrusion
+plot(hypothesis(VH_m, "VoiceHearing > 0"))
+hypothesis(VH_m, "VoiceHearing > 0")
+
+
+# Plotting the regression
+conditional_effects(VH_m)
+plot(conditional_effects(VH_m), points=T)
+
+
+## Apathy
+#testing the actual model
+Apathy_m <- brm(
+  formula = Apathy,
+  data = d,
+  family = gaussian,
+  prior = priorA,
+  sample_prior = T  
+)
+
+# Posterior predictive check
+pp_check(Apathy_m, nsamples = 100)
+
+## Check the model for warnings
+Apathy_m
+
+# Hypothesis testing that apathy has a negative effect of altercentric intrusion
+plot(hypothesis(Apathy_m, "Apathy < 0"))
+hypothesis(Apathy_m, "Apathy < 0")
+
+
+conditional_effects(Apathy_m)
+plot(conditional_effects(Apathy_m), points=T)
+
+
+
+## MR
+#testing the actual model
+MR_m <- brm(
+  formula = MR,
+  data = d,
+  family = gaussian,
+  prior = priorMR,
+  sample_prior = T  
+)
+
+# Posterior predictive check
+pp_check(MR_m, nsamples = 100)
+
+## Check the model for warnings
+MR_m
+
+plot(hypothesis(MR_m, "MindReading > 0"))
+hypothesis(MR_m, "MindReading > 0") # More samples are compatible with our hypothesis than samples that are not but the estimated effect is underwhelming. 
+
+conditional_effects(MR_m)
+plot(conditional_effects(MR_m), points=T)
+
+
+#### BOTH MR and VH
+#testing the actual model
+MRaVH_m <- brm(
+  formula = MRaVH,
+  data = d,
+  family = gaussian,
+  prior = priorMRaVH,
+  sample_prior = T  
+)
+
+# Posterior predictive check
+pp_check(MRaVH_m, nsamples = 100)
+
+## Check the model for warnings
+MRaVH_m
+
+# Hypothesis testing for voice hearing
+plot(hypothesis(MRaVH_m, "VoiceHearing > 0"))
+hypothesis(MRaVH_m, "VoiceHearing > 0")
+
+# Hypothesis testing for mind reading
+plot(hypothesis(MRaVH_m, "MindReading > 0"))
+hypothesis(MRaVH_m, "MindReading > 0")
+
+conditional_effects(MRaVH_m)
+plot(conditional_effects(MRaVH_m), points=T)
+
+
+### ALL ###
+#testing the actual model
+All_m <- brm(
+  formula = All,
+  data = d,
+  family = gaussian,
+  prior = priorAll,
+  sample_prior = T  
+)
+
+# Posterior predictive check
+pp_check(All_m, nsamples = 100)
+
+## Check the model for warnings
+All_m
+
+# Hypothesis testing for voice hearing
+plot(hypothesis(All_m, "VoiceHearing > 0"))
+hypothesis(All_m, "VoiceHearing > 0")
+
+# Hypothesis testing for mind reading
+plot(hypothesis(All_m, "MindReading > 0"))
+hypothesis(All_m, "MindReading > 0")
+
+# Hypothesis testing for Apathy
+plot(hypothesis(All_m, "Apathy > 0"))
+hypothesis(All_m, "Apathy < 0")
+
+
+conditional_effects(All_m)
+plot(conditional_effects(All_m), points=T)
+
+
+
+### Comparing the models
+VH_cri <- brms::add_criterion(VH_m, criterion = "loo")
+MR_cri <- brms::add_criterion(MR_m, criterion = "loo")
+Apathy_cri <- brms::add_criterion(Apathy_m, criterion = "loo")
+MRaVH_cri <- brms::add_criterion(MRaVH_m, criterion = "loo")
+All_cri <- brms::add_criterion(All_m, criterion = "loo")
+
+
+brms::loo_compare(VH_cri,
+                  MR_cri,
+                  Apathy_cri,
+                  MRaVH_cri,
+                  All_cri)
+
+
+brms::loo_model_weights(VH_cri,
+                  MR_cri,
+                  Apathy_cri,
+                  MRaVH_cri,
+                  All_cri)
+```
+
+
 
 
 ## Third part - min 11 in the intro video
@@ -448,7 +618,9 @@ These issues are very difficult to think through, and not knowing the causal mec
 
 Q3.1) Look through the code and identify whether the results you have match the underlying truth. Discuss what you have learned.
 
-Not doing this  -  Q3.2) OPTIONAL: is this a general pattern? Try varying the parameters (e.g. correlation values) and assess whether the new dataset(s) leads to the same biases in your analysis.
+The way the data is generated is so that symptoms (voice hearing, mind rading and apathy) are correlated slightly (.2). Furthermore, voice hearing and mind reading is correlated slightly with altercentric intrusion. The same is not the case for apathy. Apathy is not correlated with altercentric intrusion, but still correlated with the other symptoms. The diagnosis is given to the .75th percentile scoring highest for all three symptoms. This is as well related to the results from the analysis, where apathy was not found to be related to altercentric intrusion, unlike voice hearing and mind reading.
+
+We have learned to be aware of the different predictors we chose when creating a model and to be aware of the possibilities of the predictors being included in the model more then ones by being hidden in an other predictor or variable (e.g. VH used to predict diagnosis diagnosis). We have also learned how to set priors based on the information available, and how it changes depending on how sceptical you want to be towards the data
 
 
 # does the direction of the data aline with the simulation? 
