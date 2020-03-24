@@ -126,6 +126,14 @@ Controls showed on average an altercentric intrusion effect of 3.86 (CIs = 3.74,
 Q1.2) Is altercentric intrusion related to specific symptoms *in the patients*? Identify which of the symptoms could be relevant. Should you include more than one symptom? Build models, priors, predictive checks. Assess the evidence and report models and results, including plots. Discuss whether the results make sense.
 
 ```{r Clean data + Voice Hearing}
+d <- d %>%
+  mutate(
+    AltercentricIntrusion = scale(AltercentricIntrusion),
+    VoiceHearing = scale(VoiceHearing),
+    MindReading = scale(MindReading),
+    Apathy = scale(Apathy)
+  )
+
 scz <- d %>% 
   subset(Diagnosis == "Schizophrenia")
 
@@ -136,14 +144,15 @@ VH <- bf(
 )
 
 #Creating Priors 
-summary(scz)
-
-sd(scz$AltercentricIntrusion)
-
+get_prior(VH, family = gaussian, scz)
+#Defining priors
 priorVH <- c(
-  prior(normal(4, 1), class = b),  #4 is the mean, 1 is the SD (the value of AI goes up to 6 with a mean at 4)
+  prior(normal(0, 1), class = Intercept),
+  prior(normal(0, 0.3), class = b),  # Since we scaled, a sceptic prior will assume a mean of 0 and since we don't believe we get a perfect correlation we put a sd of 0.3.
   prior(normal(1, 2), class = sigma)
 ) 
+
+
 
 #Testing the prior
 VH_priorcheck <- brm(
@@ -172,6 +181,12 @@ pp_check(VH_m, nsamples = 100)
 ## Check the model for warnings
 VH_m
 
+# Hypothesis testing that voice hearing has a positive effect of altercentric intrusion
+plot(hypothesis(VH_m, "VoiceHearing > 0"))
+hypothesis(VH_m, "VoiceHearing > 0")
+
+
+# Plotting the regression
 conditional_effects(VH_m)
 plot(conditional_effects(VH_m), points=T)
 
@@ -179,15 +194,19 @@ plot(conditional_effects(VH_m), points=T)
 
 ```
 
+From this model, Voice hearing does seem to have a small possitive effect on altercentric intrusion, b = 0.06 (sd = 0.14), CI = -0.20, 0.32. This effect is however quite uncertain, which can be seen from the credibility interval containing zero. From the hypothesis testing we do see that there are more samples in favor of the hypothesis (the effect of voice hearing is bigger than zero). There are 2.1 times more samples that are compatible to our hypothesis compared to samples that are not. However, this result is unconvincing since the credibility interval contain zero.
+
+
+
 ```{r Apathy}
 Apathy <- bf(
   AltercentricIntrusion ~ 1 + Apathy
 )
 
 #Creating Priors 
-
-prior <- c(
-  prior(normal(4, 1), class = b),  #4 is the mean, 1 is the SD (the value of AI goes up to 6 with a mean at 4)
+priorA <- c(
+  prior(normal(0, 1), class = Intercept),
+  prior(normal(0, 0.3), class = b),  # Since we scaled, a sceptic prior will assume a mean of 0 and since we don't believe we get a perfect correlation we put a sd of 0.3.
   prior(normal(1, 2), class = sigma)
 ) 
 
@@ -196,7 +215,7 @@ Apathy_priorcheck <- brm(
   formula = Apathy,
   data = scz,
   family = gaussian,
-  prior = prior,
+  prior = priorA,
   sample_prior = "only"  
 )
  
@@ -208,7 +227,7 @@ Apathy_m <- brm(
   formula = Apathy,
   data = scz,
   family = gaussian,
-  prior = prior,
+  prior = priorA,
   sample_prior = T  
 )
 
@@ -218,10 +237,16 @@ pp_check(Apathy_m, nsamples = 100)
 ## Check the model for warnings
 Apathy_m
 
+# Hypothesis testing that apathy has a negative effect of altercentric intrusion
+plot(hypothesis(Apathy_m, "Apathy < 0"))
+hypothesis(Apathy_m, "Apathy < 0")
+
+
 conditional_effects(Apathy_m)
 plot(conditional_effects(Apathy_m), points=T)
 
 ```
+From this model, apathy seema to have a negative effect on altercentric intrusion, b = -0.20 (sd = 0.13), CI = -0.44, 0.05. This effect is somewhat uncertain, since the credibility interval cross zero. From the hypothesis testing we do see that there are more samples in favor of the hypothesis that the effect of apathy is smaller than zero. By assessing the evidence ratio it is apparent that there are 14.38 times more samples compatible to our hypothesis compared to samples that are not. However, this result is uncertain since the credibility interval once again contain zero.
 
 ```{r MindReading}
 MR <- bf(
@@ -229,9 +254,10 @@ MR <- bf(
 )
 
 #Creating Priors 
-
-prior <- c(
-  prior(normal(4, 1), class = b),  #4 is the mean, 1 is the SD (the value of AI goes up to 6 with a mean at 4)
+get_prior(MR, family = gaussian, scz)
+priorMR <- c(
+  prior(normal(0, 1), class = Intercept),
+  prior(normal(0, 0.3), class = b),  # Since we scaled, a sceptic prior will assume a mean of 0 and since we don't believe we get a perfect correlation we put a sd of 0.3.
   prior(normal(1, 2), class = sigma)
 ) 
 
@@ -240,7 +266,7 @@ MR_priorcheck <- brm(
   formula = MR,
   data = scz,
   family = gaussian,
-  prior = prior,
+  prior = priorMR,
   sample_prior = "only"  
 )
  
@@ -252,7 +278,7 @@ MR_m <- brm(
   formula = MR,
   data = scz,
   family = gaussian,
-  prior = prior,
+  prior = priorMR,
   sample_prior = T  
 )
 
@@ -262,24 +288,32 @@ pp_check(MR_m, nsamples = 100)
 ## Check the model for warnings
 MR_m
 
+plot(hypothesis(MR_m, "MindReading > 0"))
+hypothesis(MR_m, "MindReading > 0") # More samples are compatible with our hypothesis than samples that are not but the estimated effect is underwhelming. 
+
 conditional_effects(MR_m)
 plot(conditional_effects(MR_m), points=T)
 
 ```
-
+From this model, mind reading seem to have a very small possitive effect on altercentric intrusion, b = 0.07 (sd = 0.10), CI = -0.13, 0.28. However, the effect is uncertain as seen by the CI. The hypothesis of the effect of mind reading being above zero is however supported though seemingly uncertain, b = 0.07 (sd = 0.1), CI = -0.1, 0.24, Evid.Ratio = 3.18. Therefore, there are 3.18 times more samples that are compatible with our hypothesis compared to samples that are not.
 
 ```{r MindReading and VoiceHearing}
 
 MRaVH <- bf(
   AltercentricIntrusion ~ 1 + VoiceHearing + MindReading
 )
+priorMRaVH <- c(
+  prior(normal(0, 1), class = Intercept),
+  prior(normal(0, 0.3), class = b),  # Since we scaled, a sceptic prior will assume a mean of 0 and since we don't believe we get a perfect correlation we put a sd of 0.3.
+  prior(normal(1, 2), class = sigma)
+) 
 
 #Testing the prior
-VH_priorcheck <- brm(
+MRaVH_priorcheck <- brm(
   formula = MRaVH,
   data = scz,
   family = gaussian,
-  prior = prior,
+  prior = priorMRaVH,
   sample_prior = "only"  
 )
  
@@ -291,7 +325,7 @@ MRaVH_m <- brm(
   formula = MRaVH,
   data = scz,
   family = gaussian,
-  prior = prior,
+  prior = priorMRaVH,
   sample_prior = T  
 )
 
@@ -301,22 +335,39 @@ pp_check(MRaVH_m, nsamples = 100)
 ## Check the model for warnings
 MRaVH_m
 
+# Hypothesis testing for voice hearing
+plot(hypothesis(MRaVH_m, "VoiceHearing > 0"))
+hypothesis(MRaVH_m, "VoiceHearing > 0")
+
+# Hypothesis testing for mind reading
+plot(hypothesis(MRaVH_m, "MindReading > 0"))
+hypothesis(MRaVH_m, "MindReading > 0")
+
 conditional_effects(MRaVH_m)
 plot(conditional_effects(MRaVH_m), points=T)
 
 ```
+Running a model with both voice hearing and mind reading reveals an increase in the estimate for both predictors. Now, voice hearing shows to have an effect of b = 0.11 (sd = 0.14) and mind reading show an effect on altercentric intrusion of b = 0.10 (sd = 0.12). Both still have credibility intervals that contain zero. 
+Likewise, in the hypothesis testing the evidence in support of voice hearing and mind reading increases (Evid.Ratio = 3.37, Evid.Ratio = 4.11, respectively).
 
 ```{r all}
 All <- bf(
   AltercentricIntrusion ~ 1 + VoiceHearing + MindReading + Apathy
 )
 
+# Creating prior
+priorAll <- c(
+  prior(normal(0, 1), class = Intercept),
+  prior(normal(0, 0.3), class = b),
+  prior(normal(1, 2), class = sigma)
+) 
+
 #Testing the prior
 All_priorcheck <- brm(
   formula = All,
   data = scz,
   family = gaussian,
-  prior = prior,
+  prior = priorAll,
   sample_prior = "only"  
 )
  
@@ -328,7 +379,7 @@ All_m <- brm(
   formula = All,
   data = scz,
   family = gaussian,
-  prior = prior,
+  prior = priorAll,
   sample_prior = T  
 )
 
@@ -338,10 +389,47 @@ pp_check(All_m, nsamples = 100)
 ## Check the model for warnings
 All_m
 
+# Hypothesis testing for voice hearing
+plot(hypothesis(All_m, "VoiceHearing > 0"))
+hypothesis(All_m, "VoiceHearing > 0")
+
+# Hypothesis testing for mind reading
+plot(hypothesis(All_m, "MindReading > 0"))
+hypothesis(All_m, "MindReading > 0")
+
+# Hypothesis testing for Apathy
+plot(hypothesis(All_m, "Apathy > 0"))
+hypothesis(All_m, "Apathy < 0")
+
+
 conditional_effects(All_m)
 plot(conditional_effects(All_m), points=T)
-```
 
+```
+The model controlling for all predictors show a decrease in estimated effects of each predictor. Voice hearing show a positive effect on altercentric intrusion of b = 0.06 (sd = 0.15) after controlling for both mind reading and apathy. Likewise, mind reading have a positive effect of b = 0.04 (sd = 0.13) and apathy have a negative effect of b = -0.17 (sd = 0.15). The evidence in support of each effect has also decreased, where the samples in support of the effect of voice hearing and mind reading being greater than one is only 1.92 and 1.7 (resp.) times bigger than the samples against. For Apathy, the evidence ratio has decreased to 6.87.
+
+Comparing the models
+```{r}
+VH_cri <- brms::add_criterion(VH_m, criterion = "loo")
+MR_cri <- brms::add_criterion(MR_m, criterion = "loo")
+Apathy_cri <- brms::add_criterion(Apathy_m, criterion = "loo")
+MRaVH_cri <- brms::add_criterion(MRaVH_m, criterion = "loo")
+All_cri <- brms::add_criterion(All_m, criterion = "loo")
+
+
+brms::loo_compare(VH_cri,
+                  MR_cri,
+                  Apathy_cri,
+                  MRaVH_cri,
+                  All_cri)
+
+
+brms::loo_model_weights(VH_cri,
+                  MR_cri,
+                  Apathy_cri,
+                  MRaVH_cri,
+                  All_cri)
+```
 
 
 ## Second part - min 9 in the intro video
